@@ -1,0 +1,170 @@
+from django.db import models
+from django.contrib.auth.models import User
+from .models import Livro  # Supondo que Livro já exista no seu modelo
+
+class Colecao(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    descricao = models.TextField(blank=True)
+    livros = models.ManyToManyField(Livro, related_name="colecoes")
+    colecionador = models.ForeignKey(User, on_delete=models.CASCADE, related_name="colecoes")
+
+    def __str__(self):
+        return f"{self.nome} - {self.colecionador.username}"
+
+
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+
+from rest_framework import serializers
+from .models import Colecao
+
+class ColecaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Colecao
+        fields = ['id', 'nome', 'descricao', 'livros', 'colecionador']
+
+
+from rest_framework import generics
+from .models import Colecao
+from .serializers import ColecaoSerializer
+from .permissions import IsColecionador  # Importando permissão personalizada
+
+class ColecaoListCreate(generics.ListCreateAPIView):
+    queryset = Colecao.objects.all()
+    serializer_class = ColecaoSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(colecionador=self.request.user)
+
+class ColecaoDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Colecao.objects.all()
+    serializer_class = ColecaoSerializer
+    permission_classes = [IsColecionador]
+
+    def get_queryset(self):
+        return Colecao.objects.filter(colecionador=self.request.user)  # Permitir acesso apenas às coleções do usuário logado
+from rest_framework import generics
+from .models import Colecao
+from .serializers import ColecaoSerializer
+from .permissions import IsColecionador  # Importando permissão personalizada
+
+class ColecaoListCreate(generics.ListCreateAPIView):
+    queryset = Colecao.objects.all()
+    serializer_class = ColecaoSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(colecionador=self.request.user)
+
+class ColecaoDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Colecao.objects.all()
+    serializer_class = ColecaoSerializer
+    permission_classes = [IsColecionador]
+
+    def get_queryset(self):
+        return Colecao.objects.filter(colecionador=self.request.user)  # Permitir acesso apenas às coleções do usuário logado
+from rest_framework.permissions import BasePermission
+
+class IsColecionador(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.colecionador == request.user
+pip install djangorestframework-simplejwt
+INSTALLED_APPS = [
+    # Outras apps
+    'rest_framework',
+    'rest_framework.authtoken',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}
+INSTALLED_APPS = [
+    # Outras apps
+    'rest_framework',
+    'rest_framework.authtoken',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+urlpatterns = [
+    # Outros endpoints
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+]
+pip install drf-spectacular
+INSTALLED_APPS = [
+    # Outras apps
+    'drf_spectacular',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Biblioteca API',
+    'DESCRIPTION': 'Uma API para gerenciar coleções de livros.',
+    'VERSION': '1.0.0',
+}
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
+
+urlpatterns = [
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularRedocView.as_view(url_name='schema'), name='docs'),
+]
+from rest_framework.test import APITestCase
+from rest_framework import status
+from django.contrib.auth.models import User
+from .models import Colecao, Livro  # Se Livro for um modelo já existente
+
+class ColecaoTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.client.login(username='testuser', password='testpass')
+
+    def test_create_colecao(self):
+        url = '/api/colecoes/'
+        data = {'nome': 'Minha Coleção', 'descricao': 'Uma coleção de livros favoritos'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_update_colecao(self):
+        colecao = Colecao.objects.create(nome="Minha Coleção", colecionador=self.user)
+        url = f'/api/colecoes/{colecao.id}/'
+        data = {'nome': 'Minha Nova Coleção'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_delete_colecao(self):
+        colecao = Colecao.objects.create(nome="Minha Coleção", colecionador=self.user)
+        url = f'/api/colecoes/{colecao.id}/'
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+python manage.py test
+pip install coverage
+coverage run manage.py test
+coverage html  # Gera um relatório HTML de cobertura
+pip install django-cors-headers
+INSTALLED_APPS = [
+    'corsheaders',
+    # Outros apps
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    # Outros middlewares
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'http://192.168.1.100',  # IP do cliente hipotético
+]
+pip freeze > requirements.txt
